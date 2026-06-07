@@ -4,7 +4,7 @@
 Markdown을 16:9 발표 자료로 변환
 
 ## 화면 내용
-- Notion/Markdown 문서를 슬라이드 설계도로 사용
+- Markdown 문서를 슬라이드 설계도로 사용
 - 화면 내용과 발표 메모를 분리
 - Mermaid는 안정적인 네 가지 타입만 허용
 
@@ -34,22 +34,70 @@ flowchart LR
 
 ---
 
-# 슬라이드 02. 허용 Mermaid 타입
+# 슬라이드 02. Mermaid 타입 선택
 
 ## 화면 제목
-안 깨지는 네 가지 Mermaid만 사용한다
+내용 성격에 맞는 Mermaid를 고른다
 
 ## 화면 내용
-복잡한 다이어그램보다 안정적으로 렌더링되는 표현을 우선합니다.
+비교, 시간 순서, 요청과 응답은 각각 다른 표현을 쓰는 편이 읽기 쉽습니다.
 
 ## 화면 구성
 ```mermaid
-flowchart TB
-  A[허용 Mermaid] --> B[flowchart]
-  A --> C[kanban]
-  A --> D[timeline]
-  A --> E[sequenceDiagram]
+kanban
+  flows[흐름]
+    f1[flowchart]
+    f2[sequenceDiagram]
+  groups[분류]
+    g1[kanban]
+  time[시간]
+    t1[timeline]
 ```
 
 ## 발표 메모
-PPT/PDF 변환 안정성을 위해 타입을 제한합니다.
+Mermaid 타입은 표현하고 싶은 정보의 성격에 맞춰 선택합니다. 억지로 모든 것을 flowchart로 만들지 않습니다.
+
+---
+
+# 슬라이드 03. 제작 순서
+
+## 화면 제목
+먼저 구조를 정하고 나중에 PPTX로 만든다
+
+## 화면 내용
+슬라이드 작성은 원고 작성이 아니라 화면 설계에 가깝습니다.
+
+## 화면 구성
+```mermaid
+timeline
+  title 제작 흐름
+  1단계 : 슬라이드 메시지 정리
+  2단계 : 화면 내용 작성
+  3단계 : 필요한 Mermaid 추가
+  4단계 : 검증 후 PPTX 생성
+```
+
+## 발표 메모
+좋은 입력 Markdown은 생성기가 그대로 밀어 넣는 문서가 아니라, 발표 화면을 만들기 위한 설계도입니다.
+
+---
+
+# 슬라이드 04. 요청과 응답
+
+## 화면 제목
+주체가 말을 주고받을 때는 sequenceDiagram을 쓴다
+
+## 화면 내용
+누가 누구에게 요청하고, 누가 응답하는지 보여줄 때 가장 적합합니다.
+
+## 화면 구성
+```mermaid
+sequenceDiagram
+  participant Browser as 브라우저
+  participant Server as 서버
+  Browser->>Server: 페이지 요청
+  Server-->>Browser: HTML 응답
+```
+
+## 발표 메모
+sequenceDiagram은 브라우저, 서버, 데이터베이스처럼 주체가 명확할 때 사용합니다. 메시지는 짧게 유지합니다.
