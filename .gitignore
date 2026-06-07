@@ -1,7 +1,13 @@
 node_modules/
 dist/
-examples/
 .DS_Store
 npm-debug.log*
 *.md
 *.pptx
+
+# keep project docs
+!README.md
+!docs/
+!docs/**/*.md
+!examples/
+!examples/**/*.md
