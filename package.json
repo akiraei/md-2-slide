@@ -7,8 +7,10 @@
     "mdslide": "./src/cli.js"
   },
   "scripts": {
-    "build": "node src/cli.js build examples/sample.md --out dist/sample.pptx",
-    "validate": "node src/cli.js validate examples/sample.md"
+    "build": "node src/cli.js build",
+    "build:sample": "node src/cli.js build examples/sample.md --out dist/sample.pptx",
+    "validate": "node src/cli.js validate",
+    "validate:sample": "node src/cli.js validate examples/sample.md"
   },
   "dependencies": {
     "@mermaid-js/mermaid-cli": "^11.4.2",

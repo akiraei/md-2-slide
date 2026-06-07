@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import path from "node:path";
 import { buildDeck } from "./deck.js";
 import { parseMarkdown } from "./parser.js";
 import { validateSlides } from "./validate.js";
@@ -27,11 +28,12 @@ program
 program
   .command("build")
   .argument("<input>", "Markdown input file")
-  .requiredOption("-o, --out <path>", "Output PPTX path")
+  .option("-o, --out <path>", "Output PPTX path. Defaults to the input filename with a .pptx extension.")
   .option("--keep-artifacts", "Keep rendered Mermaid SVG/PNG artifacts", false)
   .action(async (input, options) => {
     try {
-      const result = await buildDeck(input, options.out, {
+      const outputPath = options.out || defaultOutputPath(input);
+      const result = await buildDeck(input, outputPath, {
         keepArtifacts: options.keepArtifacts,
       });
       printValidation(result.validation);
@@ -48,6 +50,11 @@ program
   });
 
 program.parseAsync(process.argv);
+
+function defaultOutputPath(input) {
+  const parsed = path.parse(input);
+  return path.join(parsed.dir, `${parsed.name}.pptx`);
+}
 
 function printValidation(result) {
   if (result.errors.length === 0 && result.warnings.length === 0) {

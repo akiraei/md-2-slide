@@ -17,19 +17,33 @@ npm install
 Validate a Markdown file:
 
 ```bash
-npm run validate
+npm run validate -- input.md
 ```
 
 Build a PPTX:
 
 ```bash
-npm run build
+npm run build -- input.md
+```
+
+By default, `input.md` is written as `input.pptx` in the same directory. To
+choose a different output path:
+
+```bash
+npm run build -- input.md --out deck.pptx
+```
+
+Build the bundled sample:
+
+```bash
+npm run build:sample
 ```
 
 Or call the CLI directly:
 
 ```bash
 node src/cli.js validate input.md
+node src/cli.js build input.md
 node src/cli.js build input.md --out deck.pptx
 ```
 
