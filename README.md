@@ -66,6 +66,7 @@ Allowed Mermaid diagram types:
 - `kanban`
 - `timeline`
 - `sequenceDiagram`
+- `mindmap`
 
 See [docs/writing-markdown.md](docs/writing-markdown.md) for the full Markdown
 writing guide, including slide structure, Mermaid selection rules, and stability

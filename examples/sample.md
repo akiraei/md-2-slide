@@ -101,3 +101,29 @@ sequenceDiagram
 
 ## 발표 메모
 sequenceDiagram은 브라우저, 서버, 데이터베이스처럼 주체가 명확할 때 사용합니다. 메시지는 짧게 유지합니다.
+
+---
+
+# 슬라이드 05. 개념 지도
+
+## 화면 제목
+전체 범위는 mindmap으로 짧게 묶어 볼 수 있다
+
+## 화면 내용
+개념 묶음을 한눈에 보여줄 때만 얕은 mindmap을 사용합니다.
+
+## 화면 구성
+```mermaid
+mindmap
+  root((웹 기초))
+    웹 원리
+      요청과 응답
+      브라우저와 서버
+    웹 3신기
+      HTML
+      CSS
+      JavaScript
+```
+
+## 발표 메모
+mindmap은 전체 지도를 보여주는 데만 사용합니다. 순서나 인과관계가 중요하면 flowchart나 timeline을 씁니다.

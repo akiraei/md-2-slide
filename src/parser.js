@@ -98,5 +98,6 @@ function detectMermaidType(firstLine) {
   if (trimmed.startsWith("sequenceDiagram")) return "sequenceDiagram";
   if (trimmed.startsWith("timeline")) return "timeline";
   if (trimmed.startsWith("kanban")) return "kanban";
+  if (trimmed.startsWith("mindmap")) return "mindmap";
   return trimmed.split(/\s+/)[0] || "unknown";
 }

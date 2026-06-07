@@ -1,4 +1,4 @@
-const ALLOWED_MERMAID_TYPES = new Set(["flowchart", "kanban", "timeline", "sequenceDiagram"]);
+const ALLOWED_MERMAID_TYPES = new Set(["flowchart", "kanban", "timeline", "sequenceDiagram", "mindmap"]);
 
 export function validateSlides(slides) {
   const errors = [];

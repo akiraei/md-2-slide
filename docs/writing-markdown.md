@@ -55,13 +55,13 @@ flowchart
 kanban
 timeline
 sequenceDiagram
+mindmap
 ```
 
 Avoid these Mermaid types because they are more likely to break or become hard
 to read after PPT/PDF conversion:
 
 ```text
-mindmap
 architecture-beta
 block-beta
 quadrantChart
@@ -171,6 +171,38 @@ Recommendations:
 - These are readability guidelines, not hard bans. If the concept needs it, a
   diagram may use 5 participants or a self-message.
 
+### `mindmap`
+
+Use `mindmap` for concept groups and overview maps.
+
+Good uses:
+
+- Course overview
+- Concepts under one topic
+- Learning scope maps
+- Simple mental models
+
+Example:
+
+```mermaid
+mindmap
+  root((웹 기초))
+    웹 원리
+      요청과 응답
+      브라우저와 서버
+    웹 3신기
+      HTML
+      CSS
+      JavaScript
+```
+
+Recommendations:
+
+- Keep depth to 2 or 3 levels when possible.
+- Keep labels short.
+- Avoid using mindmaps for strict order or cause-and-effect.
+- Use `flowchart TB` instead when hierarchy must be precise and easy to scan.
+
 ## Stable Mermaid Rules
 
 For PPT/PDF conversion, Mermaid should stay simple.
@@ -181,7 +213,8 @@ For PPT/PDF conversion, Mermaid should stay simple.
 - Use `<br/>` for intentional line breaks.
 - Prefer a simple diagram over a clever diagram.
 - Use `kanban` for comparison instead of forcing comparison into `flowchart`.
-- Use `flowchart TB` for concept groups instead of `mindmap`.
+- Use `mindmap` only for compact concept maps; use `flowchart TB` when the
+  hierarchy needs to be more controlled.
 - Use `flowchart` or `sequenceDiagram` for system structure instead of
   `architecture-beta`.
 - Use `kanban` for 2D comparison instead of `quadrantChart`.
@@ -315,6 +348,36 @@ sequenceDiagram
 sequenceDiagram은 주체 사이의 대화를 보여주는 데 사용합니다.
 ~~~
 
+### Mindmap Slide
+
+Use this when showing a compact concept map.
+
+~~~markdown
+# 슬라이드 06. 웹 기초 지도
+
+## 화면 제목
+웹 기초는 원리와 도구로 나누어 볼 수 있다
+
+## 화면 내용
+전체 범위를 먼저 보고, 세부 개념은 이후 슬라이드에서 다룹니다.
+
+## 화면 구성
+```mermaid
+mindmap
+  root((웹 기초))
+    웹 원리
+      요청과 응답
+      브라우저와 서버
+    웹 3신기
+      HTML
+      CSS
+      JavaScript
+```
+
+## 발표 메모
+mindmap은 전체 범위를 빠르게 보여줄 때만 사용합니다. 순서가 중요하면 timeline이나 flowchart를 씁니다.
+~~~
+
 ## Writing Checklist
 
 - Does the slide have one clear message?
@@ -323,13 +386,14 @@ sequenceDiagram은 주체 사이의 대화를 보여주는 데 사용합니다.
 - Is Mermaid used only when it improves understanding?
 - Did you choose the Mermaid type based on the content, not habit?
 - Are diagram labels short enough to fit inside nodes or arrows?
+- Is the mindmap shallow enough to read at slide size?
 
 ## Recommended Workflow
 
 1. Write the slide blueprint in Markdown.
 2. Decide the visual role of each slide.
 3. Add Mermaid only when the slide needs a diagram.
-4. Choose one of `flowchart`, `kanban`, `timeline`, or `sequenceDiagram`.
+4. Choose one of `flowchart`, `kanban`, `timeline`, `sequenceDiagram`, or `mindmap`.
 5. Keep the slide visible content short.
 6. Put presenter explanation in `발표 메모`.
 7. Run validation before building the deck.
