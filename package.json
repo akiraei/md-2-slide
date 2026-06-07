@@ -1,0 +1,20 @@
+{
+  "name": "md-slide",
+  "version": "0.1.0",
+  "description": "Generate 16:9 presentation decks from structured Markdown with Mermaid diagrams.",
+  "type": "module",
+  "bin": {
+    "mdslide": "./src/cli.js"
+  },
+  "scripts": {
+    "build": "node src/cli.js build examples/sample.md --out dist/sample.pptx",
+    "validate": "node src/cli.js validate examples/sample.md"
+  },
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "^11.4.2",
+    "commander": "^12.1.0",
+    "pptxgenjs": "^3.12.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {}
+}
