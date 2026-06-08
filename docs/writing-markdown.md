@@ -68,6 +68,48 @@ quadrantChart
 journey
 ```
 
+## Code Block Usage
+
+Use fenced code blocks in `화면 내용` when the slide needs to show small HTML,
+CSS, or JavaScript examples.
+
+The generator renders non-Mermaid fenced code blocks as code blocks in PPTX:
+
+- dark code background
+- monospace code text
+- language label, when a language is provided
+- preserved line breaks and indentation
+
+Good uses:
+
+- Short HTML tag examples
+- Small CSS rules
+- Small JavaScript snippets
+- Prompt or template text that should look distinct from normal body copy
+
+Keep code examples short enough to read at slide size. If the code is long,
+split it across slides or move details to `발표 메모`.
+
+Example:
+
+```html
+<h1>광주 마을 신문</h1>
+<p>오늘 웹 기초 수업이 시작되었습니다.</p>
+<img src="class.jpg" alt="수업 현장 사진">
+```
+
+Supported language labels include:
+
+```text
+html
+css
+js
+javascript
+```
+
+Code blocks without a language label are also rendered as code blocks, but a
+language label is recommended when the code is HTML, CSS, or JavaScript.
+
 ## Choosing A Mermaid Type
 
 ### `flowchart`

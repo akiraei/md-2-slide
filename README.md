@@ -82,6 +82,9 @@ Allowed Mermaid diagram types:
 - `sequenceDiagram`
 - `mindmap`
 
+Non-Mermaid fenced code blocks in `화면 내용`, such as `html`, `css`, `js`, and
+`javascript`, are rendered as code blocks in the generated PPTX.
+
 See [docs/writing-markdown.md](docs/writing-markdown.md) for the full Markdown
-writing guide, including slide structure, Mermaid selection rules, and stability
-guidelines.
+writing guide, including slide structure, code block usage, Mermaid selection
+rules, and stability guidelines.

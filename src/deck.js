@@ -17,6 +17,9 @@ const COLORS = {
   teal: "0F766E",
   violet: "7C3AED",
   amber: "B45309",
+  codeBg: "0F172A",
+  codeText: "E2E8F0",
+  codeLine: "334155",
 };
 const TEXT_FLOW = {
   breakLine: false,
@@ -96,6 +99,8 @@ function addSlide(pptx, slideData) {
     addSectionCards(slide, slideData);
   } else if (kind === "table") {
     addTableSlide(slide, slideData);
+  } else if (kind === "code") {
+    addCodeSlide(slide, slideData);
   } else if (kind === "statement") {
     addStatementSlide(slide, slideData);
   } else {
@@ -120,6 +125,88 @@ function addContentOnly(slide, slideData) {
     valign: "mid",
     align: "left",
     ...TEXT_FLOW,
+  });
+}
+
+function addCodeSlide(slide, slideData) {
+  const segments = parseFencedSegments(slideData.content);
+  const x = 0.9;
+  const w = 11.55;
+  const topY = 1.36;
+  const maxH = 5.25;
+  const gap = 0.18;
+  const measured = segments.map((segment) => ({
+    segment,
+    h: segment.type === "code" ? measureCodeHeight(segment.code) : measureTextHeight(normalizeVisibleText(segment.text)),
+  }));
+  const totalH = measured.reduce((sum, item) => sum + item.h, 0) + Math.max(0, measured.length - 1) * gap;
+  const scale = totalH > maxH ? maxH / totalH : 1;
+  let y = topY;
+
+  for (const item of measured) {
+    const h = item.h * scale;
+    if (item.segment.type === "code") {
+      addCodeBlock(slide, item.segment, x, y, w, h, scale);
+    } else {
+      const text = normalizeVisibleText(item.segment.text);
+      if (text) {
+        slide.addText(text, {
+          x: x + 0.04,
+          y,
+          w: w - 0.08,
+          h,
+          fontFace: "Apple SD Gothic Neo",
+          fontSize: Math.max(7.5, Math.min(18, fitBodyFont(text, 18)) * scale),
+          color: COLORS.text,
+          align: "left",
+          ...TEXT_FLOW,
+        });
+      }
+    }
+    y += h + gap * scale;
+  }
+}
+
+function addCodeBlock(slide, block, x, y, w, h, scale = 1) {
+  const label = block.lang ? block.lang.toUpperCase() : "CODE";
+  const labelH = Math.min(0.34, h * 0.22);
+  const bodyY = y + labelH;
+  const code = block.code.replace(/\t/g, "  ");
+
+  slide.addShape("rect", {
+    x,
+    y,
+    w,
+    h,
+    fill: { color: COLORS.codeBg },
+    line: { color: COLORS.codeLine, width: 1 },
+  });
+  slide.addText(label, {
+    x: x + 0.22,
+    y: y + 0.09,
+    w: 1.1,
+    h: 0.16,
+    fontFace: "Aptos",
+    fontSize: Math.max(6.5, 7.5 * scale),
+    bold: true,
+    color: "94A3B8",
+    margin: 0,
+    breakLine: false,
+    fit: "shrink",
+  });
+  slide.addText(code, {
+    x: x + 0.24,
+    y: bodyY + 0.08,
+    w: w - 0.48,
+    h: Math.max(0.1, h - labelH - 0.18),
+    fontFace: "Menlo",
+    fontSize: fitCodeFont(code, scale),
+    color: COLORS.codeText,
+    margin: 0,
+    breakLine: false,
+    fit: "shrink",
+    valign: "mid",
+    lineSpacingMultiple: 0.9,
   });
 }
 
@@ -419,10 +506,72 @@ function fitBodyFont(text, max) {
 
 function classifySlide(slideData) {
   if (slideData.renderedMermaid?.length > 0) return "diagram";
+  if (hasFencedCode(slideData.content)) return "code";
   if (parseMarkdownTable(slideData.content)) return "table";
   if (parseContentSections(slideData.content).length >= 2) return "cards";
   if (slideData.content.length < 170 && !slideData.content.includes("- ")) return "statement";
   return "body";
+}
+
+function hasFencedCode(content) {
+  return parseFencedSegments(content).some((segment) => segment.type === "code");
+}
+
+function parseFencedSegments(content) {
+  const segments = [];
+  const pattern = /```([a-zA-Z0-9_-]*)[^\n]*\n([\s\S]*?)```/g;
+  let cursor = 0;
+  let match;
+
+  while ((match = pattern.exec(content)) !== null) {
+    const before = content.slice(cursor, match.index).trim();
+    const lang = match[1].trim().toLowerCase();
+    const code = match[2].replace(/\n+$/g, "");
+
+    if (before) {
+      segments.push({ type: "text", text: before });
+    }
+    if (lang !== "mermaid") {
+      segments.push({ type: "code", lang, code });
+    }
+    cursor = match.index + match[0].length;
+  }
+
+  const after = content.slice(cursor).trim();
+  if (after) {
+    segments.push({ type: "text", text: after });
+  }
+
+  return segments.length > 0 ? segments : [{ type: "text", text: content }];
+}
+
+function measureTextHeight(text) {
+  const normalized = normalizeVisibleText(text);
+  if (!normalized) return 0;
+
+  const lines = normalized.split("\n").length;
+  return Math.min(2.2, Math.max(0.45, lines * 0.33 + 0.2));
+}
+
+function measureCodeHeight(code) {
+  const lines = code.split("\n").length;
+  const longestLine = code.split("\n").reduce((max, line) => Math.max(max, line.length), 0);
+  const lineWraps = Math.max(1, Math.ceil(longestLine / 82));
+  return Math.min(4.6, Math.max(0.86, lines * lineWraps * 0.3 + 0.48));
+}
+
+function fitCodeFont(code, scale) {
+  const lines = code.split("\n");
+  const longestLine = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  let size = 18;
+
+  if (longestLine > 84) size = 11;
+  else if (longestLine > 68) size = 13;
+  else if (longestLine > 48) size = 15;
+  if (lines.length > 8) size = Math.min(size, 13);
+  if (lines.length > 12) size = Math.min(size, 11);
+
+  return Math.max(7.5, size * scale);
 }
 
 function parseContentSections(content) {
