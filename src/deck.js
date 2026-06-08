@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import pptxgen from "pptxgenjs";
 import { parseMarkdown } from "./parser.js";
+import { renderPracticeAssets } from "./html.js";
 import { renderMermaidBlocks } from "./mermaid.js";
 import { validateSlides } from "./validate.js";
 
@@ -40,6 +41,7 @@ export async function buildDeck(inputPath, outputPath, options = {}) {
 
   await mkdir(path.dirname(deckPath), { recursive: true });
   const mermaidRender = await renderMermaidBlocks(slides, { keepArtifacts: options.keepArtifacts });
+  const practiceRender = await renderPracticeAssets(slides, { keepArtifacts: options.keepArtifacts });
 
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_WIDE";
@@ -56,6 +58,7 @@ export async function buildDeck(inputPath, outputPath, options = {}) {
 
   for (const slideData of slides) {
     addSlide(pptx, slideData);
+    addPracticeMaterialSlides(pptx, slideData);
   }
 
   try {
@@ -63,6 +66,7 @@ export async function buildDeck(inputPath, outputPath, options = {}) {
     await writeFile(notesPath, buildNotes(slides), "utf8");
   } finally {
     await mermaidRender.cleanup();
+    await practiceRender.cleanup();
   }
 
   return { validation, deckPath, notesPath };
@@ -73,6 +77,7 @@ function addSlide(pptx, slideData) {
   slide.background = { color: "FBFCFE" };
 
   const hasDiagram = slideData.renderedMermaid?.length > 0;
+  const hasPracticePreview = Boolean(slideData.renderedPractice);
   const title = slideData.screenTitle || slideData.slideTitle;
   const kind = classifySlide(slideData);
 
@@ -93,7 +98,9 @@ function addSlide(pptx, slideData) {
     align: "left",
   });
 
-  if (hasDiagram) {
+  if (hasPracticePreview) {
+    addContentWithPracticePreview(slide, slideData);
+  } else if (hasDiagram) {
     addContentWithDiagram(slide, slideData);
   } else if (kind === "cards") {
     addSectionCards(slide, slideData);
@@ -110,6 +117,47 @@ function addSlide(pptx, slideData) {
   if (slideData.speakerNotes) {
     slide.addNotes(slideData.speakerNotes);
   }
+}
+
+function addContentWithPracticePreview(slide, slideData) {
+  const body = normalizeVisibleText(slideData.content);
+
+  if (!body) {
+    addPracticePreviewFrame(slide, slideData.renderedPractice, 0.92, 1.34, 11.5, 5.35);
+    return;
+  }
+
+  slide.addText(body, {
+    x: 0.82,
+    y: 1.48,
+    w: 3.75,
+    h: 4.85,
+    fontFace: "Apple SD Gothic Neo",
+    fontSize: fitBodyFont(body, 17),
+    color: COLORS.text,
+    align: "left",
+    ...TEXT_FLOW,
+  });
+
+  addPracticePreviewFrame(slide, slideData.renderedPractice, 4.92, 1.34, 7.34, 5.15);
+}
+
+function addPracticePreviewFrame(slide, preview, x, y, w, h) {
+  slide.addShape("rect", {
+    x,
+    y,
+    w,
+    h,
+    fill: { color: "FFFFFF" },
+    line: { color: COLORS.line, width: 1 },
+    shadow: { type: "outer", color: "D8DEE9", opacity: 0.16, blur: 1, angle: 45, distance: 1 },
+  });
+  const box = containRect(
+    { x: x + 0.12, y: y + 0.12, w: w - 0.24, h: h - 0.24 },
+    preview.widthPx || 16,
+    preview.heightPx || 10,
+  );
+  slide.addImage({ path: preview.pngPath, ...box });
 }
 
 function addContentOnly(slide, slideData) {
@@ -208,6 +256,120 @@ function addCodeBlock(slide, block, x, y, w, h, scale = 1) {
     valign: "mid",
     lineSpacingMultiple: 0.9,
   });
+}
+
+function addPracticeMaterialSlides(pptx, slideData) {
+  const asset = slideData.practiceAsset;
+  if (!asset?.codeBlocks?.length) return;
+
+  const blocks = asset.codeBlocks.flatMap((block, blockIndex) => splitCodeForMaterial(block).map((part, partIndex, parts) => ({
+    ...part,
+    blockIndex,
+    partIndex,
+    partCount: parts.length,
+  })));
+
+  blocks.forEach((block, index) => {
+    const slide = pptx.addSlide();
+    slide.background = { color: "FBFCFE" };
+    addMaterialChrome(slide, slideData, index + 1, blocks.length);
+
+    const fileLabel = asset.fileName || `slide-${String(slideData.number).padStart(2, "0")}.${block.lang || "txt"}`;
+    const titleSuffix = blocks.length > 1 ? ` (${index + 1}/${blocks.length})` : "";
+    const label = block.lang ? block.lang.toUpperCase() : "CODE";
+
+    slide.addText(`자료: ${fileLabel}${titleSuffix}`, {
+      x: 0.72,
+      y: 0.42,
+      w: 10.9,
+      h: 0.52,
+      fontFace: "Apple SD Gothic Neo",
+      fontSize: 22,
+      bold: true,
+      color: COLORS.ink,
+      margin: 0,
+      breakLine: false,
+      fit: "shrink",
+      align: "left",
+    });
+    slide.addText("복사용 코드", {
+      x: 0.74,
+      y: 1.02,
+      w: 2.0,
+      h: 0.24,
+      fontFace: "Apple SD Gothic Neo",
+      fontSize: 10,
+      bold: true,
+      color: COLORS.muted,
+      margin: 0,
+      breakLine: false,
+    });
+
+    addCodeBlock(
+      slide,
+      { lang: block.lang || label.toLowerCase(), code: block.code },
+      0.72,
+      1.32,
+      11.88,
+      5.48,
+      1,
+    );
+  });
+}
+
+function addMaterialChrome(slide, sourceSlide, partNumber, partCount) {
+  slide.addShape("rect", {
+    x: 0,
+    y: 0,
+    w: 0.16,
+    h: SLIDE_H,
+    fill: { color: COLORS.amber },
+    line: { color: COLORS.amber },
+  });
+  slide.addShape("line", {
+    x: 0.72,
+    y: 6.92,
+    w: 11.9,
+    h: 0,
+    line: { color: COLORS.line, width: 1 },
+  });
+  slide.addText(`${sourceSlide.slideTitle} · 자료`, {
+    x: 0.72,
+    y: 7.03,
+    w: 9.9,
+    h: 0.22,
+    fontFace: "Apple SD Gothic Neo",
+    fontSize: 7.5,
+    color: COLORS.muted,
+    margin: 0,
+    breakLine: false,
+  });
+  slide.addText(partCount > 1 ? `자료 ${partNumber}/${partCount}` : "자료", {
+    x: 11.45,
+    y: 7.03,
+    w: 1.18,
+    h: 0.22,
+    fontFace: "Apple SD Gothic Neo",
+    fontSize: 7.5,
+    color: COLORS.muted,
+    align: "right",
+    margin: 0,
+  });
+}
+
+function splitCodeForMaterial(block) {
+  const lines = block.code.split("\n");
+  const maxLines = 25;
+  const chunks = [];
+
+  for (let index = 0; index < lines.length; index += maxLines) {
+    chunks.push({
+      lang: block.lang,
+      code: lines.slice(index, index + maxLines).join("\n"),
+    });
+  }
+
+  return chunks.length > 0 ? chunks : [{ lang: block.lang, code: "" }];
 }
 
 function addContentWithDiagram(slide, slideData) {
@@ -412,7 +574,8 @@ function addTableSlide(slide, slideData) {
 }
 
 function addChrome(slide, slideData, kind) {
-  const accent = kind === "diagram" ? COLORS.teal : kind === "cards" ? COLORS.violet : COLORS.blue;
+  const accent =
+    kind === "preview" ? COLORS.amber : kind === "diagram" ? COLORS.teal : kind === "cards" ? COLORS.violet : COLORS.blue;
   slide.addShape("rect", {
     x: 0,
     y: 0,
@@ -505,6 +668,7 @@ function fitBodyFont(text, max) {
 }
 
 function classifySlide(slideData) {
+  if (slideData.renderedPractice) return "preview";
   if (slideData.renderedMermaid?.length > 0) return "diagram";
   if (hasFencedCode(slideData.content)) return "code";
   if (parseMarkdownTable(slideData.content)) return "table";

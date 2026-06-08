@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-const SECTION_NAMES = ["화면 제목", "화면 내용", "화면 구성", "발표 메모"];
+const SECTION_NAMES = ["화면 제목", "화면 내용", "화면 구성", "발표 메모", "자료"];
 
 export async function parseMarkdown(inputPath) {
   const absolutePath = path.resolve(inputPath);
@@ -58,6 +58,7 @@ function parseSlide(raw, number, filePath) {
   }
 
   const composition = cleanSection(sections["화면 구성"]);
+  const material = cleanSection(sections["자료"]);
   const mermaidBlocks = extractMermaidBlocks(composition);
 
   return {
@@ -69,6 +70,8 @@ function parseSlide(raw, number, filePath) {
     content: cleanSection(sections["화면 내용"]),
     composition,
     speakerNotes: cleanSection(sections["발표 메모"]),
+    material,
+    practiceAsset: extractPracticeAsset(material),
     mermaidBlocks,
   };
 }
@@ -87,6 +90,54 @@ function extractMermaidBlocks(markdown) {
     const firstLine = code.split("\n").find((line) => line.trim().length > 0) || "";
     const type = detectMermaidType(firstLine);
     blocks.push({ code, type });
+  }
+
+  return blocks;
+}
+
+function extractPracticeAsset(markdown) {
+  if (!markdown) return null;
+
+  const codeBlocks = extractFencedCodeBlocks(markdown).filter((block) => block.lang !== "mermaid");
+  if (codeBlocks.length === 0) {
+    return {
+      raw: markdown,
+      fileName: extractFileName(markdown),
+      codeBlocks: [],
+      primaryCode: null,
+    };
+  }
+
+  const primaryCode = codeBlocks.find((block) => block.lang === "html") ?? codeBlocks[0];
+
+  return {
+    raw: markdown,
+    fileName: extractFileName(markdown),
+    codeBlocks,
+    primaryCode,
+  };
+}
+
+function extractFileName(markdown) {
+  const backtickMatch = /^파일명\s*예시\s*:\s*`([^`]+)`\s*$/m.exec(markdown);
+  if (backtickMatch) return backtickMatch[1].trim();
+
+  const plainMatch = /^파일명\s*예시\s*:\s*(.+?)\s*$/m.exec(markdown);
+  if (!plainMatch) return "";
+
+  return plainMatch[1].replace(/^`|`$/g, "").trim();
+}
+
+function extractFencedCodeBlocks(markdown) {
+  const blocks = [];
+  const pattern = /```([a-zA-Z0-9_-]*)[^\n]*\n([\s\S]*?)```/g;
+  let match;
+
+  while ((match = pattern.exec(markdown)) !== null) {
+    blocks.push({
+      lang: match[1].trim().toLowerCase(),
+      code: match[2].replace(/\n+$/g, ""),
+    });
   }
 
   return blocks;

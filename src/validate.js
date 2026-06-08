@@ -15,6 +15,15 @@ export function validateSlides(slides) {
     if (!slide.content && slide.mermaidBlocks.length === 0) {
       warnings.push({ slideNumber: slide.number, message: "No visible content or Mermaid diagram found." });
     }
+    if (slide.material && !slide.practiceAsset?.codeBlocks?.length) {
+      warnings.push({ slideNumber: slide.number, message: "'자료' section exists but has no fenced code block." });
+    }
+    if (slide.practiceAsset?.codeBlocks?.length && !slide.practiceAsset.primaryCode) {
+      warnings.push({ slideNumber: slide.number, message: "'자료' section has no renderable practice code." });
+    }
+    if (slide.practiceAsset?.primaryCode && slide.practiceAsset.primaryCode.lang !== "html") {
+      warnings.push({ slideNumber: slide.number, message: "'자료' preview is generated only for HTML code blocks." });
+    }
 
     for (const block of slide.mermaidBlocks) {
       if (!ALLOWED_MERMAID_TYPES.has(block.type)) {
