@@ -121,23 +121,31 @@ function addSlide(pptx, slideData) {
 
 function addContentWithPracticePreview(slide, slideData) {
   const body = normalizeVisibleText(slideData.content);
+  const hasInlineCode = hasFencedCode(slideData.content);
 
   if (!body) {
     addPracticePreviewFrame(slide, slideData.renderedPractice, 0.92, 1.34, 11.5, 5.35);
     return;
   }
 
-  slide.addText(body, {
-    x: 0.82,
-    y: 1.48,
-    w: 3.75,
-    h: 4.85,
-    fontFace: "Apple SD Gothic Neo",
-    fontSize: fitBodyFont(body, 17),
-    color: COLORS.text,
-    align: "left",
-    ...TEXT_FLOW,
-  });
+  if (hasInlineCode) {
+    addSegmentedContent(slide, slideData.content, 0.82, 1.48, 3.75, 4.85, {
+      textFontSize: 16,
+      maxCodeHeight: 1.45,
+    });
+  } else {
+    slide.addText(body, {
+      x: 0.82,
+      y: 1.48,
+      w: 3.75,
+      h: 4.85,
+      fontFace: "Apple SD Gothic Neo",
+      fontSize: fitBodyFont(body, 17),
+      color: COLORS.text,
+      align: "left",
+      ...TEXT_FLOW,
+    });
+  }
 
   addPracticePreviewFrame(slide, slideData.renderedPractice, 4.92, 1.34, 7.34, 5.15);
 }
@@ -514,7 +522,8 @@ function splitCodeForMaterial(block) {
 
 function addContentWithDiagram(slide, slideData) {
   const body = normalizeVisibleText(slideData.content);
-  const hasShortBody = body.length < 115 && !body.includes("•") && !body.includes("\n");
+  const hasInlineCode = hasFencedCode(slideData.content);
+  const hasShortBody = !hasInlineCode && body.length < 115 && !body.includes("•") && !body.includes("\n");
   const diagram = slideData.renderedMermaid[0];
 
   if (hasShortBody) {
@@ -535,17 +544,24 @@ function addContentWithDiagram(slide, slideData) {
     return;
   }
 
-  slide.addText(body, {
-    x: 0.82,
-    y: 1.55,
-    w: 3.65,
-    h: 4.85,
-    fontFace: "Apple SD Gothic Neo",
-    fontSize: fitBodyFont(body, 17),
-    color: COLORS.text,
-    align: "left",
-    ...TEXT_FLOW,
-  });
+  if (hasInlineCode) {
+    addSegmentedContent(slide, slideData.content, 0.82, 1.55, 3.65, 4.85, {
+      textFontSize: 16,
+      maxCodeHeight: 1.6,
+    });
+  } else {
+    slide.addText(body, {
+      x: 0.82,
+      y: 1.55,
+      w: 3.65,
+      h: 4.85,
+      fontFace: "Apple SD Gothic Neo",
+      fontSize: fitBodyFont(body, 17),
+      color: COLORS.text,
+      align: "left",
+      ...TEXT_FLOW,
+    });
+  }
 
   addDiagramFrame(slide, diagram, 4.86, 1.48, 7.48, 4.98);
 }
@@ -757,6 +773,7 @@ function addChrome(slide, slideData, kind) {
 
 function normalizeVisibleText(text) {
   return convertTablesToLines(text)
+    .replace(/```[a-zA-Z0-9_-]*[^\n]*\n([\s\S]*?)```/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
@@ -862,6 +879,46 @@ function parseFencedSegments(content) {
   }
 
   return segments.length > 0 ? segments : [{ type: "text", text: content }];
+}
+
+function addSegmentedContent(slide, content, x, y, w, h, options = {}) {
+  const segments = parseFencedSegments(content);
+  const gap = options.gap ?? 0.14;
+  const textFontSize = options.textFontSize ?? 17;
+  const maxCodeHeight = options.maxCodeHeight ?? 1.8;
+  const measured = segments.map((segment) => ({
+    segment,
+    h:
+      segment.type === "code"
+        ? Math.min(maxCodeHeight, Math.max(0.72, measureCodeHeight(segment.code) + 0.12))
+        : measureTextHeight(normalizeVisibleText(segment.text)),
+  }));
+  const totalH = measured.reduce((sum, item) => sum + item.h, 0) + Math.max(0, measured.length - 1) * gap;
+  const scale = totalH > h ? h / totalH : 1;
+  let currentY = y;
+
+  for (const item of measured) {
+    const segmentH = item.h * scale;
+    if (item.segment.type === "code") {
+      addCodeBlock(slide, item.segment, x, currentY, w, segmentH, scale);
+    } else {
+      const text = normalizeVisibleText(item.segment.text);
+      if (text) {
+        slide.addText(text, {
+          x,
+          y: currentY,
+          w,
+          h: segmentH,
+          fontFace: "Apple SD Gothic Neo",
+          fontSize: Math.max(7.5, Math.min(textFontSize, fitBodyFont(text, textFontSize)) * scale),
+          color: COLORS.text,
+          align: "left",
+          ...TEXT_FLOW,
+        });
+      }
+    }
+    currentY += segmentH + gap * scale;
+  }
 }
 
 function measureTextHeight(text) {
