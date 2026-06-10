@@ -178,6 +178,26 @@ function addContentOnly(slide, slideData) {
 
 function addCodeSlide(slide, slideData) {
   const segments = parseFencedSegments(slideData.content);
+  const codeSegments = segments.filter((segment) => segment.type === "code");
+
+  if (codeSegments.length === 1 && isCompactCodeBlock(codeSegments[0])) {
+    if (isWideCompactCodeBlock(codeSegments[0])) {
+      addWideCompactCodeSlide(slide, segments, codeSegments[0]);
+      return;
+    }
+    addCompactCodeSlide(slide, segments, codeSegments[0]);
+    return;
+  }
+
+  if (codeSegments.length > 1 && codeSegments.every((segment) => isCompactCodeBlock(segment))) {
+    if (shouldUseSideBySideCodeLayout(segments, codeSegments)) {
+      addSideBySideCompactCodeSlide(slide, codeSegments);
+      return;
+    }
+    addStackedCompactCodeSlide(slide, segments);
+    return;
+  }
+
   const x = 0.9;
   const w = 11.55;
   const topY = 1.36;
@@ -213,6 +233,126 @@ function addCodeSlide(slide, slideData) {
     }
     y += h + gap * scale;
   }
+}
+
+function addCompactCodeSlide(slide, segments, codeSegment) {
+  const text = normalizeVisibleText(
+    segments
+      .filter((segment) => segment.type === "text")
+      .map((segment) => segment.text)
+      .join("\n\n"),
+  );
+  const metrics = measureCodeMetrics(codeSegment);
+  const codeW = compactCodeWidth(metrics);
+  const codeH = Math.min(4.65, Math.max(1.35, measureCodeHeight(codeSegment.code) + 0.28));
+
+  if (!text) {
+    addCodeBlock(slide, codeSegment, (SLIDE_W - codeW) / 2, 1.55, codeW, codeH, 1);
+    return;
+  }
+
+  const codeX = 7.05;
+  const codeY = Math.max(1.58, 1.42 + (4.95 - codeH) / 2);
+  const textX = 0.9;
+  const textW = codeX - textX - 0.55;
+
+  slide.addText(text, {
+    x: textX,
+    y: 1.56,
+    w: textW,
+    h: 4.85,
+    fontFace: "Apple SD Gothic Neo",
+    fontSize: fitBodyFont(text, 19),
+    color: COLORS.text,
+    align: "left",
+    ...TEXT_FLOW,
+  });
+
+  addCodeBlock(slide, codeSegment, codeX, codeY, Math.min(codeW, 5.35), codeH, 1);
+}
+
+function addWideCompactCodeSlide(slide, segments, codeSegment) {
+  const text = normalizeVisibleText(
+    segments
+      .filter((segment) => segment.type === "text")
+      .map((segment) => segment.text)
+      .join("\n\n"),
+  );
+  const codeH = Math.min(3.7, Math.max(1.25, measureCodeHeight(codeSegment.code) + 0.22));
+
+  if (text) {
+    slide.addText(text, {
+      x: 0.9,
+      y: 1.34,
+      w: 11.45,
+      h: Math.max(0.76, Math.min(1.85, measureTextHeight(text) + 0.2)),
+      fontFace: "Apple SD Gothic Neo",
+      fontSize: fitBodyFont(text, 17),
+      color: COLORS.text,
+      align: "left",
+      ...TEXT_FLOW,
+    });
+  }
+
+  addCodeBlock(slide, codeSegment, 1.38, text ? 2.55 : 1.6, 10.25, codeH, 1);
+}
+
+function addStackedCompactCodeSlide(slide, segments) {
+  const x = 0.92;
+  const topY = 1.34;
+  const maxH = 5.25;
+  const gap = 0.16;
+  const measured = segments.map((segment) => ({
+    segment,
+    h: segment.type === "code" ? Math.min(1.65, Math.max(0.7, measureCodeHeight(segment.code) + 0.16)) : measureTextHeight(normalizeVisibleText(segment.text)),
+  }));
+  const totalH = measured.reduce((sum, item) => sum + item.h, 0) + Math.max(0, measured.length - 1) * gap;
+  const scale = totalH > maxH ? maxH / totalH : 1;
+  let y = topY;
+
+  for (const item of measured) {
+    const h = item.h * scale;
+    if (item.segment.type === "code") {
+      const metrics = measureCodeMetrics(item.segment);
+      const codeW = isWideCompactCodeBlock(item.segment) ? 10.25 : compactCodeWidth(metrics);
+      addCodeBlock(slide, item.segment, x + (11.5 - codeW) / 2, y, codeW, h, scale);
+    } else {
+      const text = normalizeVisibleText(item.segment.text);
+      if (text) {
+        slide.addText(text, {
+          x: x + 0.04,
+          y,
+          w: 11.42,
+          h,
+          fontFace: "Apple SD Gothic Neo",
+          fontSize: Math.max(7.5, Math.min(17, fitBodyFont(text, 17)) * scale),
+          color: COLORS.text,
+          align: "left",
+          ...TEXT_FLOW,
+        });
+      }
+    }
+    y += h + gap * scale;
+  }
+}
+
+function addSideBySideCompactCodeSlide(slide, codeSegments) {
+  const x = 0.84;
+  const y = 1.56;
+  const gap = 0.36;
+  const colW = (11.65 - gap) / 2;
+  const maxH = 4.9;
+
+  codeSegments.slice(0, 2).forEach((segment, index) => {
+    const metrics = measureCodeMetrics(segment);
+    const codeW = Math.min(colW, compactCodeWidth(metrics));
+    const codeH = Math.min(maxH, Math.max(1.8, measureCodeHeight(segment.code) + 0.34));
+    const colX = x + index * (colW + gap);
+    const codeX = colX + (colW - codeW) / 2;
+    const codeY = y + (maxH - codeH) / 2;
+
+    addCodeBlock(slide, segment, codeX, codeY, codeW, codeH, 1);
+  });
 }
 
 function addCodeBlock(slide, block, x, y, w, h, scale = 1) {
@@ -681,6 +821,21 @@ function hasFencedCode(content) {
   return parseFencedSegments(content).some((segment) => segment.type === "code");
 }
 
+function shouldUseSideBySideCodeLayout(segments, codeSegments) {
+  if (codeSegments.length !== 2) return false;
+  const hasMeaningfulText = segments.some(
+    (segment) => segment.type === "text" && normalizeVisibleText(segment.text).length > 0,
+  );
+  if (hasMeaningfulText) return false;
+
+  const gap = 0.36;
+  const totalWidth = codeSegments
+    .map((segment) => (isWideCompactCodeBlock(segment) ? 10.25 : compactCodeWidth(measureCodeMetrics(segment))))
+    .reduce((sum, width) => sum + width, 0);
+
+  return totalWidth + gap <= 11.65;
+}
+
 function parseFencedSegments(content) {
   const segments = [];
   const pattern = /```([a-zA-Z0-9_-]*)[^\n]*\n([\s\S]*?)```/g;
@@ -722,6 +877,41 @@ function measureCodeHeight(code) {
   const longestLine = code.split("\n").reduce((max, line) => Math.max(max, line.length), 0);
   const lineWraps = Math.max(1, Math.ceil(longestLine / 82));
   return Math.min(4.6, Math.max(0.86, lines * lineWraps * 0.3 + 0.48));
+}
+
+function measureCodeMetrics(block) {
+  const code = typeof block === "string" ? block : block.code;
+  const lines = code.split("\n");
+  const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+  return {
+    lineCount: nonEmptyLines.length || lines.length,
+    physicalLineCount: lines.length,
+    longestLine: lines.reduce((max, line) => Math.max(max, line.length), 0),
+    nonEmptyLongestLine: nonEmptyLines.reduce((max, line) => Math.max(max, line.length), 0),
+    diagramLike: /[┌┐└┘├┤┬┴┼│─]/.test(code) || /\[[^\]]+\]/.test(code),
+  };
+}
+
+function isCompactCodeBlock(block) {
+  const metrics = measureCodeMetrics(block);
+  return metrics.lineCount <= 22 && metrics.nonEmptyLongestLine <= 64;
+}
+
+function isWideCompactCodeBlock(block) {
+  return isPlainTextCodeBlock(block);
+}
+
+function isPlainTextCodeBlock(block) {
+  const lang = block.lang || "";
+  if (lang) return false;
+  const code = block.code.trim();
+  if (/[{}<>;=]|\[[^\]]+\]|[┌┐└┘├┤┬┴┼│─]/.test(code)) return false;
+  return /[.!?。]|해줘|요청|추천|수정|만들/.test(code);
+}
+
+function compactCodeWidth(metrics) {
+  const minWidth = metrics.diagramLike ? 5.2 : 4.25;
+  return Math.min(6.4, Math.max(minWidth, metrics.nonEmptyLongestLine * 0.09 + 1.25));
 }
 
 function fitCodeFont(code, scale) {
