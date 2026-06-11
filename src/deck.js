@@ -412,6 +412,7 @@ function addPracticeMaterialSlides(pptx, slideData) {
 
   const blocks = asset.codeBlocks.flatMap((block, blockIndex) => splitCodeForMaterial(block).map((part, partIndex, parts) => ({
     ...part,
+    fileName: block.fileName,
     blockIndex,
     partIndex,
     partCount: parts.length,
@@ -420,10 +421,10 @@ function addPracticeMaterialSlides(pptx, slideData) {
   blocks.forEach((block, index) => {
     const slide = pptx.addSlide();
     slide.background = { color: "FBFCFE" };
-    addMaterialChrome(slide, slideData, index + 1, blocks.length);
+    addMaterialChrome(slide, slideData, block.partIndex + 1, block.partCount);
 
-    const fileLabel = asset.fileName || `slide-${String(slideData.number).padStart(2, "0")}.${block.lang || "txt"}`;
-    const titleSuffix = blocks.length > 1 ? ` (${index + 1}/${blocks.length})` : "";
+    const fileLabel = block.fileName || asset.fileName || `slide-${String(slideData.number).padStart(2, "0")}.${block.lang || "txt"}`;
+    const titleSuffix = block.partCount > 1 ? ` (${block.partIndex + 1}/${block.partCount})` : "";
     const label = block.lang ? block.lang.toUpperCase() : "CODE";
 
     slide.addText(`자료: ${fileLabel}${titleSuffix}`, {

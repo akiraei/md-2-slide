@@ -98,7 +98,13 @@ function extractMermaidBlocks(markdown) {
 function extractPracticeAsset(markdown) {
   if (!markdown) return null;
 
-  const codeBlocks = extractFencedCodeBlocks(markdown).filter((block) => block.lang !== "mermaid");
+  const fileLabels = extractFileLabels(markdown);
+  const codeBlocks = extractFencedCodeBlocks(markdown)
+    .filter((block) => block.lang !== "mermaid")
+    .map((block) => ({
+      ...block,
+      fileName: findNearestFileLabel(fileLabels, block.index),
+    }));
   if (codeBlocks.length === 0) {
     return {
       raw: markdown,
@@ -128,6 +134,32 @@ function extractFileName(markdown) {
   return plainMatch[1].replace(/^`|`$/g, "").trim();
 }
 
+function extractFileLabels(markdown) {
+  const labels = [];
+  const pattern = /^파일명\s*예시\s*:\s*(?:`([^`]+)`|(.+?))\s*$/gm;
+  let match;
+
+  while ((match = pattern.exec(markdown)) !== null) {
+    const name = (match[1] ?? match[2] ?? "").trim();
+    if (name) {
+      labels.push({ index: match.index, fileName: name.replace(/^`|`$/g, "").trim() });
+    }
+  }
+
+  return labels;
+}
+
+function findNearestFileLabel(labels, blockIndex) {
+  let nearest = "";
+
+  for (const label of labels) {
+    if (label.index > blockIndex) break;
+    nearest = label.fileName;
+  }
+
+  return nearest;
+}
+
 function extractFencedCodeBlocks(markdown) {
   const blocks = [];
   const pattern = /```([a-zA-Z0-9_-]*)[^\n]*\n([\s\S]*?)```/g;
@@ -137,6 +169,7 @@ function extractFencedCodeBlocks(markdown) {
     blocks.push({
       lang: match[1].trim().toLowerCase(),
       code: match[2].replace(/\n+$/g, ""),
+      index: match.index,
     });
   }
 
